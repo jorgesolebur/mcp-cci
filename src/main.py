@@ -1,12 +1,10 @@
-from mcp.server.fastmcp import FastMCP, Context
+from mcp.server.fastmcp import FastMCP
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from dotenv import load_dotenv
 import asyncio
 import os
-
-from utils import run_cci_command
 
 load_dotenv()
 
@@ -44,19 +42,19 @@ mcp = FastMCP(
 
 @mcp.tool()
 async def create_scratch_org(org_name: str = "dev") -> str:
-    """Create a CumulusCI scratch org for development.
+    """Get the CumulusCI command to create a scratch org for development.
 
-    This tool creates a new scratch org using the CumulusCI dev_org flow.
-    The org will be configured with the default settings for development work.
+    This tool returns the CCI command that should be executed in your project directory
+    to create a new scratch org using the dev_org flow.
 
     Args:
         org_name: Name of the org to create (default: "dev")
+    
+    Returns:
+        The CCI command to execute locally
     """
-    try:
-        result = await run_cci_command(f"flow run dev_org --org {org_name}")
-        return result
-    except Exception as e:
-        return f"Error creating scratch org: {str(e)}"
+    command = f"cci flow run dev_org --org {org_name}"
+    return f"Run this command in your CumulusCI project directory:\n\n{command}\n\nThis will create a scratch org named '{org_name}' using your project's dev_org flow configuration."
 
 async def main():
     transport = os.getenv("TRANSPORT", "sse")
