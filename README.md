@@ -19,9 +19,19 @@ The server currently provides one essential CCI operation:
 ## Prerequisites
 
 - Python 3.12+
-- CumulusCI installed and configured
 - Access to a Salesforce org (Dev Hub for scratch orgs)
 - Docker if running the MCP server as a container (recommended)
+
+## Environment Setup
+
+The MCP server automatically checks for and helps set up the required development environment. When you use any CCI tool for the first time, it will check if you're in a virtual environment called `devenv`. If not, it will provide setup instructions:
+
+```bash
+python -m venv devenv
+source devenv/bin/activate
+pip install -e git+https://github.com/jorgesolebur/CumulusCI.git@main#egg=cumulusci
+pip install -e git+https://github.com/jorgesolebur/CumulusCI_AzureDevOps.git@main#egg=cumulusci-azure-devops
+```
 
 ## Installation
 
@@ -90,7 +100,7 @@ With stdio, the MCP client itself can spin up the MCP server, so nothing to run 
 #### SSE Transport
 
 ```bash
-docker run -p 8050:8050 mcp/cci
+docker run -d -p 8050:8050 mcp/cci
 ```
 
 The MCP server will run as an API endpoint within the container.
@@ -172,15 +182,32 @@ Add this server to your MCP configuration for Claude Desktop, Windsurf, or any o
 
 ## Extending the Server
 
-This template provides a foundation for building more comprehensive CCI integrations. To extend:
+This template provides a foundation for building more comprehensive CCI integrations. To add new CCI tools:
 
-1. Add more CCI tools by creating methods with the `@mcp.tool()` decorator
-2. Modify the `utils.py` file to add more CCI command wrappers
-3. Consider adding prompts and resources with `@mcp.resource()` and `@mcp.prompt()`
+1. Create a new `@mcp.tool()` method
+2. Use the `get_cci_command_with_devenv_check()` utility function for consistent behavior
+3. Example:
+   ```python
+   @mcp.tool()
+   async def deploy_to_org(org_name: str = "dev") -> str:
+       command = f"cci flow run deploy --org {org_name}"
+       purpose = f"Deploy to org '{org_name}'"
+       return get_cci_command_with_devenv_check(command, purpose)
+   ```
+
+This ensures all tools have consistent devenv checking and setup guidance.
 
 ## Available Tools
 
+### Environment Setup
+- **`setup_devenv`**: Sets up the `devenv` virtual environment with CumulusCI and Azure DevOps extensions
+
+### CCI Operations
 - **`create_scratch_org`**: Creates a new scratch org using `cci flow run dev_org --org <org_name>`
+- **`list_orgs`**: Lists all connected CumulusCI orgs using `cci org list`
+- **`run_tests`**: Runs Apex tests in a specified org using `cci task run run_tests --org <org_name>`
+
+All CCI tools automatically check for the `devenv` environment and guide you to set it up if needed.
 
 ## Future Enhancements
 
