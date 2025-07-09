@@ -216,12 +216,25 @@ This ensures all tools have consistent command execution and error handling.
 ### Environment Setup
 - **`check_cci_installation`**: Checks if CumulusCI is installed and provides installation/upgrade instructions
 
-### CCI Operations
-- **`create_scratch_org`**: Creates a new scratch org using `cci flow run dev_org --org <org_name>`
+### Scratch Org Management
+- **`create_dev_scratch_org`**: Creates a development scratch org using `cci flow run dev_org --org <org_name>`
+- **`create_feature_scratch_org`**: Creates a feature/QA scratch org using `cci flow run ci_feature_2gp --org <org_name>`
+- **`create_beta_scratch_org`**: Creates a beta/regression scratch org using `cci flow run regression_org --org <org_name>`
 - **`list_orgs`**: Lists all connected CumulusCI orgs using `cci org list`
-- **`run_tests`**: Runs Apex tests in a specified org using `cci task run run_tests --org <org_name>`
+- **`open_org`**: Opens the specified org in a browser using `cci org browser --org <org_name>`
 
-All CCI tools provide setup guidance if needed.
+### Development Operations
+- **`run_tests`**: Runs Apex tests in a specified org using `cci task run run_all_tests_locally --org <org_name>`
+- **`retrieve_changes`**: Retrieves metadata changes from the specified org using `cci task run retrieve_changes --org <org_name>`
+- **`deploy`**: Deploys local metadata to the specified org using `cci task run deploy --org <org_name>`
+
+### Generic CCI Task Handler
+- **`run_generic_cci_task`**: Handles any CCI task that doesn't have a dedicated tool following a 3-step approach:
+  1. Checks if the task exists using `cci task list`
+  2. Gets task information and parameters using `cci task info` or `cci task run --help`
+  3. Runs the task with appropriate parameters after collecting required values from the user
+
+All CCI tools provide setup guidance if needed and follow consistent error handling patterns.
 
 ## Future Enhancements
 
