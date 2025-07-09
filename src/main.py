@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 import asyncio
 import os
+import aiofiles
+from pathlib import Path
 
 load_dotenv()
 
@@ -339,6 +341,48 @@ CRITICAL ERROR HANDLING:
 - Stop execution and recommend contacting the devops architect team
 
 Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter 1500000 (25 minutes in milliseconds) for potentially long-running operations."""
+
+# MCP Resources for framework documentation
+@mcp.resource("framework://{framework_name}")
+async def get_framework_documentation(framework_name: str) -> str:
+    """
+    Provides framework-specific documentation and best practices.
+    
+    Available frameworks:
+    - salesforce-triggers: Apex trigger development guidelines for this project
+    - salesforce-logging: Logging best practices for this project
+    - salesforce-cache-manager: Platform Cache management framework for performance optimization
+    
+    Args:
+        framework_name: Name of the framework to get documentation for
+        
+    Returns:
+        Framework documentation content
+    """
+    # Get the path to the resources directory
+    resources_dir = Path(__file__).parent.parent / "resources"
+    resource_file = resources_dir / f"{framework_name}.md"
+    
+    if not resource_file.exists():
+        available_frameworks = [
+            "salesforce-triggers",
+            "salesforce-logging",
+            "salesforce-cache-manager"
+        ]
+        return f"""Framework documentation not found for: {framework_name}
+
+Available frameworks:
+{chr(10).join(f"- {fw}" for fw in available_frameworks)}
+
+To access a framework's documentation, use the resource URI:
+framework://<framework_name>"""
+    
+    try:
+        async with aiofiles.open(resource_file, 'r', encoding='utf-8') as file:
+            content = await file.read()
+            return content
+    except Exception as e:
+        return f"Error reading framework documentation for {framework_name}: {str(e)}"
 
 async def main():
     transport = os.getenv("TRANSPORT", "sse")

@@ -236,11 +236,54 @@ This ensures all tools have consistent command execution and error handling.
 
 All CCI tools provide setup guidance if needed and follow consistent error handling patterns.
 
+## MCP Resources
+
+The server provides framework-specific documentation through MCP resources. These resources give agents contextual information about development practices and standards.
+
+### Available Resources
+
+Access resources using the URI pattern: `framework://<framework-name>`
+
+- **`framework://salesforce-triggers`**: Comprehensive guidelines for developing Apex triggers
+  - Trigger framework architecture
+  - Handler pattern implementation
+  - Best practices and anti-patterns
+  - Testing strategies
+  - Performance considerations
+
+- **`framework://salesforce-logging`**: Logging standards and best practices
+  - Custom logger implementation
+  - Log levels and usage guidelines
+  - Performance considerations
+  - Production logging strategies
+  - Security and privacy considerations
+
+- **`framework://salesforce-cache-manager`**: Platform Cache management framework for performance optimization
+  - Three cache types: Organization, Session, and Transaction
+  - Declarative configuration with custom metadata
+  - Usage examples and best practices
+  - Performance monitoring and debugging
+  - Security considerations for cached data
+
+### Using Resources
+
+Agents can request framework documentation when needed:
+
+```json
+{
+  "method": "resources/read",
+  "params": {
+    "uri": "framework://salesforce-triggers"
+  }
+}
+```
+
+This provides on-demand access to framework-specific guidance without cluttering tool descriptions.
+
 ## Future Enhancements
 
-Consider adding tools for:
-- Deploying to orgs
-- Running tests
-- Managing org configurations
-- Viewing org information
-- Data operations
+Consider adding:
+- Additional framework resources (LWC, Aura, Flows)
+- More CCI operation tools
+- Integration with CI/CD pipelines
+- Advanced testing workflows
