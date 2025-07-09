@@ -1,4 +1,4 @@
-<h1 align="center">MCP-CCI: CumulusCI Integration for AI Agents</h1>
+<h1 align="center">SFCore TH Dev: CumulusCI Integration for AI Agents</h1>
 
 An implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server integrated with [CumulusCI](https://cumulusci.org) for providing AI agents with Salesforce development capabilities.
 
@@ -24,13 +24,17 @@ The server currently provides one essential CCI operation:
 
 ## Environment Setup
 
-The MCP server automatically checks for and helps set up the required development environment. When you use any CCI tool for the first time, it will check if you're in a virtual environment called `devenv`. If not, it will provide setup instructions:
+The MCP server provides CCI installation checking and setup instructions. When you encounter CCI command not found errors, use the `check_cci_installation` tool which will guide you through:
 
 ```bash
-python -m venv devenv
-source devenv/bin/activate
-pip install -e git+https://github.com/jorgesolebur/CumulusCI.git@main#egg=cumulusci
-pip install -e git+https://github.com/jorgesolebur/CumulusCI_AzureDevOps.git@main#egg=cumulusci-azure-devops
+# Check if CCI is installed
+cci version
+
+# Install CCI if not present
+pipx install cumulusci-plus-azure-devops
+
+# Upgrade CCI if needed
+pipx install cumulusci-plus-azure-devops --force
 ```
 
 ## Installation
@@ -45,7 +49,7 @@ pip install -e git+https://github.com/jorgesolebur/CumulusCI_AzureDevOps.git@mai
 2. Clone this repository:
    ```bash
    git clone <your-repo-url>
-   cd mcp-cci
+   cd sfcore-th-dev
    ```
 
 3. Install dependencies:
@@ -63,7 +67,17 @@ pip install -e git+https://github.com/jorgesolebur/CumulusCI_AzureDevOps.git@mai
 
 1. Build the Docker image:
    ```bash
-   docker build -t mcp/cci --build-arg PORT=8050 .
+   docker build -t ghcr.io/jorgesolebur/mcp-sfcore-th-dev:latest --build-arg PORT=8050 .
+   ```
+
+2. Push to GitHub Container Registry:
+   ```bash
+   docker push ghcr.io/jorgesolebur/mcp-sfcore-th-dev:latest
+   ```
+
+   Note: You'll need to authenticate with GitHub Container Registry first:
+   ```bash
+   echo $GITHUB_TOKEN | docker login ghcr.io -u jorgesolebur --password-stdin
    ```
 
 ## Configuration
@@ -100,7 +114,7 @@ With stdio, the MCP client itself can spin up the MCP server, so nothing to run 
 #### SSE Transport
 
 ```bash
-docker run -d -p 8050:8050 mcp/cci
+docker run -d -p 8050:8050 ghcr.io/jorgesolebur/mcp-sfcore-th-dev:latest
 ```
 
 The MCP server will run as an API endpoint within the container.
@@ -118,7 +132,7 @@ Once you have the server running with SSE transport, you can connect to it using
 ```json
 {
   "mcpServers": {
-    "cci": {
+    "sfcore-th-dev": {
       "transport": "sse",
       "url": "http://localhost:8050/sse"
     }
@@ -130,7 +144,7 @@ Once you have the server running with SSE transport, you can connect to it using
 > ```json
 > {
 >   "mcpServers": {
->     "cci": {
+>     "sfcore-th-dev": {
 >       "transport": "sse",
 >       "serverUrl": "http://localhost:8050/sse"
 >     }
@@ -151,9 +165,9 @@ Add this server to your MCP configuration for Claude Desktop, Windsurf, or any o
 ```json
 {
   "mcpServers": {
-    "cci": {
-      "command": "your/path/to/mcp-cci/.venv/Scripts/python.exe",
-      "args": ["your/path/to/mcp-cci/src/main.py"],
+    "sfcore-th-dev": {
+      "command": "your/path/to/sfcore-th-dev/.venv/Scripts/python.exe",
+      "args": ["your/path/to/sfcore-th-dev/src/main.py"],
       "env": {
         "TRANSPORT": "stdio"
       }
@@ -167,11 +181,11 @@ Add this server to your MCP configuration for Claude Desktop, Windsurf, or any o
 ```json
 {
   "mcpServers": {
-    "cci": {
+    "sfcore-th-dev": {
       "command": "docker",
       "args": ["run", "--rm", "-i", 
                "-e", "TRANSPORT", 
-               "mcp/cci"],
+               "ghcr.io/jorgesolebur/mcp-sfcore-th-dev:latest"],
       "env": {
         "TRANSPORT": "stdio"
       }
@@ -185,29 +199,29 @@ Add this server to your MCP configuration for Claude Desktop, Windsurf, or any o
 This template provides a foundation for building more comprehensive CCI integrations. To add new CCI tools:
 
 1. Create a new `@mcp.tool()` method
-2. Use the `get_cci_command_with_devenv_check()` utility function for consistent behavior
+2. Use the `get_cci_command_instructions()` utility function for consistent behavior
 3. Example:
    ```python
    @mcp.tool()
    async def deploy_to_org(org_name: str = "dev") -> str:
        command = f"cci flow run deploy --org {org_name}"
        purpose = f"Deploy to org '{org_name}'"
-       return get_cci_command_with_devenv_check(command, purpose)
+       return get_cci_command_instructions(command, purpose)
    ```
 
-This ensures all tools have consistent devenv checking and setup guidance.
+This ensures all tools have consistent command execution and error handling.
 
 ## Available Tools
 
 ### Environment Setup
-- **`setup_devenv`**: Sets up the `devenv` virtual environment with CumulusCI and Azure DevOps extensions
+- **`check_cci_installation`**: Checks if CumulusCI is installed and provides installation/upgrade instructions
 
 ### CCI Operations
 - **`create_scratch_org`**: Creates a new scratch org using `cci flow run dev_org --org <org_name>`
 - **`list_orgs`**: Lists all connected CumulusCI orgs using `cci org list`
 - **`run_tests`**: Runs Apex tests in a specified org using `cci task run run_tests --org <org_name>`
 
-All CCI tools automatically check for the `devenv` environment and guide you to set it up if needed.
+All CCI tools provide setup guidance if needed.
 
 ## Future Enhancements
 

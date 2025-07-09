@@ -1,7 +1,8 @@
 version: '3.8'
 
 services:
-  mcp-cci:
+  sfcore-th-dev:
+    image: ghcr.io/jorgesolebur/mcp-sfcore-th-dev:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,8 +14,7 @@ services:
       - HOST=0.0.0.0
       - PORT=8050
       - TRANSPORT=sse
-    volumes:
-      # Mount a volume for the devenv if you want persistence
-      - ./devenv:/app/devenv
+    # volumes:
+      # No volumes needed for direct CCI operation
     restart: unless-stopped
-    container_name: mcp-cci-server
+    container_name: sfcore-th-dev-server

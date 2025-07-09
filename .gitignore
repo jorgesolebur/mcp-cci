@@ -1,6 +1,4 @@
 .env
-venv
-.venv
 __pycache__
-mem0_mcp.egg-info
+sfcore_th_dev.egg-info
 .python-version

@@ -33,29 +33,19 @@ async def cci_lifespan(server: FastMCP) -> AsyncIterator[CCIContext]:
 
 # Initialize FastMCP server
 mcp = FastMCP(
-    "mcp-cci",
-    description="MCP server for CumulusCI CLI operations",
+    "sfcore-th-dev",
+    description="SFCore TH Dev - MCP server for CumulusCI CLI operations",
     lifespan=cci_lifespan,
     host=os.getenv("HOST", "0.0.0.0"),
     port=os.getenv("PORT", "8050")
 )        
 
-def get_devenv_setup_instructions() -> str:
-    """Get the setup instructions for the devenv virtual environment."""
-    return """1. `python3 -m venv devenv`
-2. `devenv/bin/pip install -e git+https://github.com/jorgesolebur/CumulusCI.git@main#egg=cumulusci`
-3. `devenv/bin/pip install -e git+https://github.com/jorgesolebur/CumulusCI_AzureDevOps.git@main#egg=cumulusci-azure-devops`"""
-
-def get_devenv_check_instruction() -> str:
-    """Get instructions to check if devenv setup is needed."""
-    return "Check if devenv exists: `ls -la | grep devenv`"
-
-def get_cci_command_with_devenv_check(command: str, purpose: str, timeout_minutes: int = 25) -> str:
+def get_cci_command_instructions(command: str, purpose: str, timeout_minutes: int = 25) -> str:
     """
-    Get a formatted response for CCI tools that includes devenv checking.
+    Get a formatted response for CCI tools.
     
     Args:
-        command: The CCI command to execute (without devenv/bin/ prefix)
+        command: The CCI command to execute
         purpose: Description of what the command does
         timeout_minutes: Timeout in minutes for the command (default: 25)
     
@@ -65,9 +55,7 @@ def get_cci_command_with_devenv_check(command: str, purpose: str, timeout_minute
     timeout_ms = timeout_minutes * 60 * 1000  # Convert to milliseconds
     return f"""ACTION REQUIRED: {purpose}:
 
-1. {get_devenv_check_instruction()}
-2. If devenv doesn't exist, first run the setup_devenv tool
-3. Execute: `devenv/bin/{command}`
+Execute: `{command}`
 
 CRITICAL ERROR HANDLING:
 - If ANY of these commands fail, DO NOT attempt additional troubleshooting
@@ -78,20 +66,23 @@ CRITICAL ERROR HANDLING:
 Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
 
 @mcp.tool()
-async def setup_devenv() -> str:
-    """Set up the devenv virtual environment for CumulusCI development.
+async def check_cci_installation() -> str:
+    """Check if CumulusCI is installed and provide installation/upgrade instructions.
     
-    This tool sets up the required virtual environment with CumulusCI and Azure DevOps extensions.
-    Run this once before using other CCI tools.
+    This tool checks if CCI is available and suggests appropriate installation or upgrade commands.
+    Run this if you encounter CCI command not found errors.
     
     Returns:
-        Instructions for the LLM to execute the setup commands
+        Instructions for the LLM to check CCI installation and provide setup guidance
     """
-    return f"""ACTION REQUIRED: Set up the devenv virtual environment:
+    return """ACTION REQUIRED: Check CumulusCI installation:
 
-{get_devenv_setup_instructions()}
+1. First, check if CCI is installed: `cci version`
+2. If CCI is not installed, install it: `pipx install cumulusci-plus-azure-devops`
+3. If CCI is installed but needs upgrading, upgrade it: `pipx install cumulusci-plus-azure-devops --force`
+4. Verify installation: `cci version`
 
-This will create a virtual environment with CumulusCI and Azure DevOps extensions installed from custom repositories.
+This will install or upgrade CumulusCI with Azure DevOps extensions.
 
 CRITICAL ERROR HANDLING:
 - If ANY setup command fails, DO NOT attempt additional troubleshooting
@@ -104,7 +95,7 @@ async def create_dev_scratch_org(org_name: str = "dev") -> str:
     """Create a CumulusCI scratch org for development.
 
     This tool creates a scratch org using the CumulusCI dev_org flow.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to create (default: "dev")
@@ -115,14 +106,12 @@ async def create_dev_scratch_org(org_name: str = "dev") -> str:
     timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
     return f"""ACTION REQUIRED: Create scratch org '{org_name}':
 
-1. {get_devenv_check_instruction()}
-2. If devenv doesn't exist, first run the setup_devenv tool
-3. Check for existing org: `devenv/bin/cci org list`
-4. If an org named '{org_name}' already exists:
+1. Check for existing org using the command: `cci org list`
+2. If an org named '{org_name}' already exists:
    - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
-   - If user says yes: Execute `devenv/bin/cci org remove --org {org_name}`
+   - If user says yes: Execute `cci org remove --org {org_name}`
    - If user says no: Stop and inform user that org creation was cancelled
-5. Execute: `devenv/bin/cci flow run dev_org --org {org_name}`
+3. Execute: `cci flow run dev_org --org {org_name}`
 
 CRITICAL ERROR HANDLING:
 - If ANY of these commands fail, DO NOT attempt additional troubleshooting
@@ -139,7 +128,7 @@ async def create_feature_scratch_org(org_name: str = "feature") -> str:
     This tool creates a scratch org using the CumulusCI ci_feature_2gp flow.
     This scratch org is used for testing a specific feature branch before merging to main.
     We can call it QA or feature testing org.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to create (default: "feature")
@@ -150,14 +139,12 @@ async def create_feature_scratch_org(org_name: str = "feature") -> str:
     timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
     return f"""ACTION REQUIRED: Create scratch org '{org_name}':
 
-1. {get_devenv_check_instruction()}
-2. If devenv doesn't exist, first run the setup_devenv tool
-3. Check for existing org: `devenv/bin/cci org list`
-4. If an org named '{org_name}' already exists:
+1. Check for existing org: `cci org list`
+2. If an org named '{org_name}' already exists:
    - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
-   - If user says yes: Execute `devenv/bin/cci org remove --org {org_name}`
+   - If user says yes: Execute `cci org remove --org {org_name}`
    - If user says no: Stop and inform user that org creation was cancelled
-5. Execute: `devenv/bin/cci flow run ci_feature_2gp --org {org_name}`
+3. Execute: `cci flow run ci_feature_2gp --org {org_name}`
 
 CRITICAL ERROR HANDLING:
 - If ANY of these commands fail, DO NOT attempt additional troubleshooting
@@ -173,7 +160,7 @@ async def create_beta_scratch_org(org_name: str = "beta") -> str:
 
     This tool creates a scratch org using the CumulusCI regression_org flow.
     This scratch org is used for regression testing, or test a specific beta package before release.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to create (default: "beta")
@@ -184,14 +171,12 @@ async def create_beta_scratch_org(org_name: str = "beta") -> str:
     timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
     return f"""ACTION REQUIRED: Create scratch org '{org_name}':
 
-1. {get_devenv_check_instruction()}
-2. If devenv doesn't exist, first run the setup_devenv tool
-3. Check for existing org: `devenv/bin/cci org list`
-4. If an org named '{org_name}' already exists:
+1. Check for existing org: `cci org list`
+2. If an org named '{org_name}' already exists:
    - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
-   - If user says yes: Execute `devenv/bin/cci org remove --org {org_name}`
+   - If user says yes: Execute `cci org remove --org {org_name}`
    - If user says no: Stop and inform user that org creation was cancelled
-5. Execute: `devenv/bin/cci flow run regression_org --org {org_name}`
+3. Execute: `cci flow run regression_org --org {org_name}`
 
 CRITICAL ERROR HANDLING:
 - If ANY of these commands fail, DO NOT attempt additional troubleshooting
@@ -206,14 +191,14 @@ async def list_orgs() -> str:
     """List all connected CumulusCI orgs.
 
     This tool shows all orgs that are connected to CumulusCI.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
     
     Returns:
         Instructions for the LLM to execute the required commands
     """
     command = "cci org list"
     purpose = "List all connected CumulusCI orgs"
-    return get_cci_command_with_devenv_check(command, purpose)
+    return get_cci_command_instructions(command, purpose)
 
 @mcp.tool()
 async def run_tests(org_name: str = "dev") -> str:
@@ -222,7 +207,7 @@ async def run_tests(org_name: str = "dev") -> str:
     This tool runs the test suite in the specified org.
     It runs PMD, ESLint, Flow Scanner as Static Code Scans
     It also runs Apex tests, Jest Tests and Flow tests as Unit Tests.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to run tests in (default: "dev")
@@ -232,14 +217,14 @@ async def run_tests(org_name: str = "dev") -> str:
     """
     command = f"cci task run run_all_tests_locally --org {org_name}"
     purpose = f"Run Apex tests in org '{org_name}'"
-    return get_cci_command_with_devenv_check(command, purpose)
+    return get_cci_command_instructions(command, purpose)
 
 @mcp.tool()
 async def open_org(org_name: str) -> str:
     """Open the specified org in a browser.
 
     This tool opens the specified org in a browser.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org user wants to open. If the org_name is
@@ -251,7 +236,7 @@ async def open_org(org_name: str) -> str:
     """
     command = f"cci org browser --org {org_name}"
     purpose = f"Open org '{org_name}' in browser"
-    return get_cci_command_with_devenv_check(command, purpose)
+    return get_cci_command_instructions(command, purpose)
 
 @mcp.tool()
 async def retrieve_changes(org_name: str) -> str:
@@ -259,7 +244,7 @@ async def retrieve_changes(org_name: str) -> str:
 
     This tool retrieves metadata changes from the specified org.
     It retrieves all changes made in the org since the last retrieval.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org user wants to open. If the org_name is
@@ -271,14 +256,14 @@ async def retrieve_changes(org_name: str) -> str:
     """
     command = f"cci task run retrieve_changes --org {org_name}"
     purpose = f"Retrieves changes from org '{org_name}' locally"
-    return get_cci_command_with_devenv_check(command, purpose)
+    return get_cci_command_instructions(command, purpose)
 
 @mcp.tool()
 async def deploy(org_name: str, path: str, check_only: str) -> str:
     """Deploys local metadata in the specified org.
 
     This tool deploys local metadata in the specified org.
-    Requires devenv to be set up first (use setup_devenv tool if needed).
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org user wants to open. If the org_name is
@@ -294,8 +279,8 @@ async def deploy(org_name: str, path: str, check_only: str) -> str:
         Instructions for the LLM to execute the required commands
     """
     command = f"cci task run deploy --org {org_name} --check_only {check_only} --path {path}"
-    purpose = f"Retrieves changes from org '{org_name}' locally"
-    return get_cci_command_with_devenv_check(command, purpose)
+    purpose = f"Deploy metadata to org '{org_name}'"
+    return get_cci_command_instructions(command, purpose)
 
 async def main():
     transport = os.getenv("TRANSPORT", "sse")
