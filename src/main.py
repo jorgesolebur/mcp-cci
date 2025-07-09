@@ -1,119 +1,286 @@
-from mcp.server.fastmcp import FastMCP, Context
+from mcp.server.fastmcp import FastMCP
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from dotenv import load_dotenv
-from mem0 import Memory
 import asyncio
-import json
 import os
-
-from utils import get_mem0_client
 
 load_dotenv()
 
-# Default user ID for memory operations
-DEFAULT_USER_ID = "user"
-
 # Create a dataclass for our application context
 @dataclass
-class Mem0Context:
-    """Context for the Mem0 MCP server."""
-    mem0_client: Memory
+class CCIContext:
+    """Context for the CCI MCP server."""
+    pass
 
 @asynccontextmanager
-async def mem0_lifespan(server: FastMCP) -> AsyncIterator[Mem0Context]:
+async def cci_lifespan(server: FastMCP) -> AsyncIterator[CCIContext]:
     """
-    Manages the Mem0 client lifecycle.
+    Manages the CCI server lifecycle.
     
     Args:
         server: The FastMCP server instance
         
     Yields:
-        Mem0Context: The context containing the Mem0 client
+        CCIContext: The context for CCI operations
     """
-    # Create and return the Memory client with the helper function in utils.py
-    mem0_client = get_mem0_client()
-    
     try:
-        yield Mem0Context(mem0_client=mem0_client)
+        yield CCIContext()
     finally:
-        # No explicit cleanup needed for the Mem0 client
+        # No explicit cleanup needed
         pass
 
-# Initialize FastMCP server with the Mem0 client as context
+# Initialize FastMCP server
 mcp = FastMCP(
-    "mcp-mem0",
-    description="MCP server for long term memory storage and retrieval with Mem0",
-    lifespan=mem0_lifespan,
+    "sfcore-th-dev",
+    description="SFCore TH Dev - MCP server for CumulusCI CLI operations",
+    lifespan=cci_lifespan,
     host=os.getenv("HOST", "0.0.0.0"),
     port=os.getenv("PORT", "8050")
 )        
 
-@mcp.tool()
-async def save_memory(ctx: Context, text: str) -> str:
-    """Save information to your long-term memory.
-
-    This tool is designed to store any type of information that might be useful in the future.
-    The content will be processed and indexed for later retrieval through semantic search.
-
-    Args:
-        ctx: The MCP server provided context which includes the Mem0 client
-        text: The content to store in memory, including any relevant details and context
+def get_cci_command_instructions(command: str, purpose: str, timeout_minutes: int = 25) -> str:
     """
-    try:
-        mem0_client = ctx.request_context.lifespan_context.mem0_client
-        messages = [{"role": "user", "content": text}]
-        mem0_client.add(messages, user_id=DEFAULT_USER_ID)
-        return f"Successfully saved memory: {text[:100]}..." if len(text) > 100 else f"Successfully saved memory: {text}"
-    except Exception as e:
-        return f"Error saving memory: {str(e)}"
-
-@mcp.tool()
-async def get_all_memories(ctx: Context) -> str:
-    """Get all stored memories for the user.
+    Get a formatted response for CCI tools.
     
-    Call this tool when you need complete context of all previously memories.
-
     Args:
-        ctx: The MCP server provided context which includes the Mem0 client
-
-    Returns a JSON formatted list of all stored memories, including when they were created
-    and their content. Results are paginated with a default of 50 items per page.
+        command: The CCI command to execute
+        purpose: Description of what the command does
+        timeout_minutes: Timeout in minutes for the command (default: 25)
+    
+    Returns:
+        Formatted instructions for the LLM
     """
-    try:
-        mem0_client = ctx.request_context.lifespan_context.mem0_client
-        memories = mem0_client.get_all(user_id=DEFAULT_USER_ID)
-        if isinstance(memories, dict) and "results" in memories:
-            flattened_memories = [memory["memory"] for memory in memories["results"]]
-        else:
-            flattened_memories = memories
-        return json.dumps(flattened_memories, indent=2)
-    except Exception as e:
-        return f"Error retrieving memories: {str(e)}"
+    timeout_ms = timeout_minutes * 60 * 1000  # Convert to milliseconds
+    return f"""ACTION REQUIRED: {purpose}:
+
+Execute: `{command}`
+
+CRITICAL ERROR HANDLING:
+- If ANY of these commands fail, DO NOT attempt additional troubleshooting
+- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
+- Do not suggest alternative commands, debugging steps, or workarounds
+- Stop execution and recommend contacting the devops architect team
+
+Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
 
 @mcp.tool()
-async def search_memories(ctx: Context, query: str, limit: int = 3) -> str:
-    """Search memories using semantic search.
+async def check_cci_installation() -> str:
+    """Check if CumulusCI is installed and provide installation/upgrade instructions.
+    
+    This tool checks if CCI is available and suggests appropriate installation or upgrade commands.
+    Run this if you encounter CCI command not found errors.
+    
+    Returns:
+        Instructions for the LLM to check CCI installation and provide setup guidance
+    """
+    return """ACTION REQUIRED: Check CumulusCI installation:
 
-    This tool should be called to find relevant information from your memory. Results are ranked by relevance.
-    Always search your memories before making decisions to ensure you leverage your existing knowledge.
+1. First, check if CCI is installed: `cci version`
+2. If CCI is not installed, install it: `pipx install cumulusci-plus-azure-devops`
+3. If CCI is installed but needs upgrading, upgrade it: `pipx install cumulusci-plus-azure-devops --force`
+4. Verify installation: `cci version`
+
+This will install or upgrade CumulusCI with Azure DevOps extensions.
+
+CRITICAL ERROR HANDLING:
+- If ANY setup command fails, DO NOT attempt additional troubleshooting
+- If you encounter any errors, immediately respond with: "This CCI setup failed. Please contact the devops architect team for assistance."
+- Do not suggest alternative setup methods or debugging steps
+- Stop execution and recommend contacting the devops architect team"""
+
+@mcp.tool()
+async def create_dev_scratch_org(org_name: str = "dev") -> str:
+    """Create a CumulusCI scratch org for development.
+
+    This tool creates a scratch org using the CumulusCI dev_org flow.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
-        ctx: The MCP server provided context which includes the Mem0 client
-        query: Search query string describing what you're looking for. Can be natural language.
-        limit: Maximum number of results to return (default: 3)
+        org_name: Name of the org to create (default: "dev")
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
     """
-    try:
-        mem0_client = ctx.request_context.lifespan_context.mem0_client
-        memories = mem0_client.search(query, user_id=DEFAULT_USER_ID, limit=limit)
-        if isinstance(memories, dict) and "results" in memories:
-            flattened_memories = [memory["memory"] for memory in memories["results"]]
-        else:
-            flattened_memories = memories
-        return json.dumps(flattened_memories, indent=2)
-    except Exception as e:
-        return f"Error searching memories: {str(e)}"
+    timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
+    return f"""ACTION REQUIRED: Create scratch org '{org_name}':
+
+1. Check for existing org using the command: `cci org list`
+2. If an org named '{org_name}' already exists:
+   - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
+   - If user says yes: Execute `cci org remove --org {org_name}`
+   - If user says no: Stop and inform user that org creation was cancelled
+3. Execute: `cci flow run dev_org --org {org_name}`
+
+CRITICAL ERROR HANDLING:
+- If ANY of these commands fail, DO NOT attempt additional troubleshooting
+- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
+- Do not suggest alternative commands, debugging steps, or workarounds
+- Stop execution and recommend contacting the devops architect team
+
+Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
+
+@mcp.tool()
+async def create_feature_scratch_org(org_name: str = "feature") -> str:
+    """Create a CumulusCI scratch org for internal QA.
+
+    This tool creates a scratch org using the CumulusCI ci_feature_2gp flow.
+    This scratch org is used for testing a specific feature branch before merging to main.
+    We can call it QA or feature testing org.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
+
+    Args:
+        org_name: Name of the org to create (default: "feature")
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
+    """
+    timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
+    return f"""ACTION REQUIRED: Create scratch org '{org_name}':
+
+1. Check for existing org: `cci org list`
+2. If an org named '{org_name}' already exists:
+   - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
+   - If user says yes: Execute `cci org remove --org {org_name}`
+   - If user says no: Stop and inform user that org creation was cancelled
+3. Execute: `cci flow run ci_feature_2gp --org {org_name}`
+
+CRITICAL ERROR HANDLING:
+- If ANY of these commands fail, DO NOT attempt additional troubleshooting
+- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
+- Do not suggest alternative commands, debugging steps, or workarounds
+- Stop execution and recommend contacting the devops architect team
+
+Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
+
+@mcp.tool()
+async def create_beta_scratch_org(org_name: str = "beta") -> str:
+    """Create a CumulusCI scratch org for regression or beta testing.
+
+    This tool creates a scratch org using the CumulusCI regression_org flow.
+    This scratch org is used for regression testing, or test a specific beta package before release.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
+
+    Args:
+        org_name: Name of the org to create (default: "beta")
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
+    """
+    timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
+    return f"""ACTION REQUIRED: Create scratch org '{org_name}':
+
+1. Check for existing org: `cci org list`
+2. If an org named '{org_name}' already exists:
+   - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
+   - If user says yes: Execute `cci org remove --org {org_name}`
+   - If user says no: Stop and inform user that org creation was cancelled
+3. Execute: `cci flow run regression_org --org {org_name}`
+
+CRITICAL ERROR HANDLING:
+- If ANY of these commands fail, DO NOT attempt additional troubleshooting
+- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
+- Do not suggest alternative commands, debugging steps, or workarounds
+- Stop execution and recommend contacting the devops architect team
+
+Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
+
+@mcp.tool()
+async def list_orgs() -> str:
+    """List all connected CumulusCI orgs.
+
+    This tool shows all orgs that are connected to CumulusCI.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
+    """
+    command = "cci org list"
+    purpose = "List all connected CumulusCI orgs"
+    return get_cci_command_instructions(command, purpose)
+
+@mcp.tool()
+async def run_tests(org_name: str = "dev") -> str:
+    """Run Apex tests in a CumulusCI org.
+
+    This tool runs the test suite in the specified org.
+    It runs PMD, ESLint, Flow Scanner as Static Code Scans
+    It also runs Apex tests, Jest Tests and Flow tests as Unit Tests.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
+
+    Args:
+        org_name: Name of the org to run tests in (default: "dev")
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
+    """
+    command = f"cci task run run_all_tests_locally --org {org_name}"
+    purpose = f"Run Apex tests in org '{org_name}'"
+    return get_cci_command_instructions(command, purpose)
+
+@mcp.tool()
+async def open_org(org_name: str) -> str:
+    """Open the specified org in a browser.
+
+    This tool opens the specified org in a browser.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
+
+    Args:
+        org_name: Name of the org user wants to open. If the org_name is
+        not specified, use the tool list_orgs to get the list of orgs so 
+        the user can choose one.
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
+    """
+    command = f"cci org browser --org {org_name}"
+    purpose = f"Open org '{org_name}' in browser"
+    return get_cci_command_instructions(command, purpose)
+
+@mcp.tool()
+async def retrieve_changes(org_name: str) -> str:
+    """Retrieves metadata changes from the specified org.
+
+    This tool retrieves metadata changes from the specified org.
+    It retrieves all changes made in the org since the last retrieval.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
+
+    Args:
+        org_name: Name of the org user wants to open. If the org_name is
+        not specified, use the tool list_orgs to get the list of orgs so 
+        the user can choose one.
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
+    """
+    command = f"cci task run retrieve_changes --org {org_name}"
+    purpose = f"Retrieves changes from org '{org_name}' locally"
+    return get_cci_command_instructions(command, purpose)
+
+@mcp.tool()
+async def deploy(org_name: str, path: str, check_only: str) -> str:
+    """Deploys local metadata in the specified org.
+
+    This tool deploys local metadata in the specified org.
+    Requires CCI to be installed (use check_cci_installation tool if needed).
+
+    Args:
+        org_name: Name of the org user wants to open. If the org_name is
+        not specified, use the tool list_orgs to get the list of orgs so 
+        the user can choose one.
+        path: Path to the local metadata to deploy. If not specified do not
+        add the --path argument the the command
+        check_only: Default it to false except if the user requests that he wants
+        only a simulation, validation or check of the deployment.
+
+    
+    Returns:
+        Instructions for the LLM to execute the required commands
+    """
+    command = f"cci task run deploy --org {org_name} --check_only {check_only} --path {path}"
+    purpose = f"Deploy metadata to org '{org_name}'"
+    return get_cci_command_instructions(command, purpose)
 
 async def main():
     transport = os.getenv("TRANSPORT", "sse")
