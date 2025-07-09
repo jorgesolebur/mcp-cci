@@ -282,6 +282,64 @@ async def deploy(org_name: str, path: str, check_only: str) -> str:
     purpose = f"Deploy metadata to org '{org_name}'"
     return get_cci_command_instructions(command, purpose)
 
+@mcp.tool()
+async def run_generic_cci_task(task_name: str, user_request: str) -> str:
+    """Generic tool for running any CCI task that doesn't have a dedicated tool.
+
+    This tool follows a 3-step approach:
+    1. Checks if the requested task exists using 'cci task list'
+    2. Gets task information and parameters using 'cci task info' or 'cci task run --help'
+    3. Runs the task with the appropriate parameters
+
+    Use this tool when the user requests a CCI operation that doesn't have a specific tool.
+
+    Args:
+        task_name: Name of the CCI task to run (e.g., 'deploy', 'retrieve_changes', etc.)
+        user_request: Description of what the user wants to accomplish
+    
+    Returns:
+        Instructions for the LLM to execute the 3-step process
+    """
+    return f"""ACTION REQUIRED: Handle generic CCI task '{task_name}' for: {user_request}
+
+Follow this 3-step approach:
+
+STEP 1: Check if the task exists
+Execute: `cci task list`
+- Search the output for a task named '{task_name}' or similar
+- If you don't find the task, respond with: "The task '{task_name}' was not found in the available CCI tasks. Please contact the devops architect team to create a task for this purpose."
+- If you find the task, proceed to Step 2
+
+STEP 2: Get task information and parameters
+Execute one of these commands to learn about the task:
+- `cci task info {task_name}` 
+- `cci task run {task_name} --help`
+
+Analyze the output to identify:
+- Required parameters (marked as required or without default values)
+- Optional parameters and their default values
+- Parameter descriptions to understand what values are needed
+
+For any REQUIRED parameters you don't know the value for, ask the user:
+"I need the following information to run the '{task_name}' task:
+- [parameter_name]: [description of what this parameter is for]
+- [another_parameter]: [description]
+Please provide these values."
+
+STEP 3: Run the task
+Once you have all required parameter values, execute:
+`cci task run {task_name} --option1 value1 --option2 value2 ...`
+
+Replace option1, option2, etc. with the actual parameter names and their values.
+
+CRITICAL ERROR HANDLING:
+- If ANY of these commands fail, DO NOT attempt additional troubleshooting
+- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
+- Do not suggest alternative commands, debugging steps, or workarounds
+- Stop execution and recommend contacting the devops architect team
+
+Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter 1500000 (25 minutes in milliseconds) for potentially long-running operations."""
+
 async def main():
     transport = os.getenv("TRANSPORT", "sse")
     if transport == 'sse':
