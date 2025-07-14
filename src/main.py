@@ -79,10 +79,9 @@ async def check_cci_installation() -> str:
     """
     return """ACTION REQUIRED: Check CumulusCI installation:
 
-1. First, check if CCI is installed: `cci version`
-2. If CCI is not installed, install it: `pipx install cumulusci-plus-azure-devops`
-3. If CCI is installed but needs upgrading, upgrade it: `pipx install cumulusci-plus-azure-devops --force`
-4. Verify installation: `cci version`
+1. First, check if CCI is installed: `cci --version`
+2. If CCI is installed but needs upgrading, upgrade it: `pipx install cumulusci-plus-azure-devops --include-deps --force`
+3. Verify installation: `cci --version`
 
 This will install or upgrade CumulusCI with Azure DevOps extensions.
 
@@ -97,7 +96,6 @@ async def create_dev_scratch_org(org_name: str = "dev") -> str:
     """Create a CumulusCI scratch org for development.
 
     This tool creates a scratch org using the CumulusCI dev_org flow.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to create (default: "dev")
@@ -130,7 +128,6 @@ async def create_feature_scratch_org(org_name: str = "feature") -> str:
     This tool creates a scratch org using the CumulusCI ci_feature_2gp flow.
     This scratch org is used for testing a specific feature branch before merging to main.
     We can call it QA or feature testing org.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to create (default: "feature")
@@ -162,7 +159,6 @@ async def create_beta_scratch_org(org_name: str = "beta") -> str:
 
     This tool creates a scratch org using the CumulusCI regression_org flow.
     This scratch org is used for regression testing, or test a specific beta package before release.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to create (default: "beta")
@@ -193,7 +189,6 @@ async def list_orgs() -> str:
     """List all connected CumulusCI orgs.
 
     This tool shows all orgs that are connected to CumulusCI.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
     
     Returns:
         Instructions for the LLM to execute the required commands
@@ -209,7 +204,6 @@ async def run_tests(org_name: str = "dev") -> str:
     This tool runs the test suite in the specified org.
     It runs PMD, ESLint, Flow Scanner as Static Code Scans
     It also runs Apex tests, Jest Tests and Flow tests as Unit Tests.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org to run tests in (default: "dev")
@@ -226,7 +220,6 @@ async def open_org(org_name: str) -> str:
     """Open the specified org in a browser.
 
     This tool opens the specified org in a browser.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org user wants to open. If the org_name is
@@ -246,7 +239,6 @@ async def retrieve_changes(org_name: str) -> str:
 
     This tool retrieves metadata changes from the specified org.
     It retrieves all changes made in the org since the last retrieval.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org user wants to open. If the org_name is
@@ -265,7 +257,6 @@ async def deploy(org_name: str, path: str, check_only: str) -> str:
     """Deploys local metadata in the specified org.
 
     This tool deploys local metadata in the specified org.
-    Requires CCI to be installed (use check_cci_installation tool if needed).
 
     Args:
         org_name: Name of the org user wants to open. If the org_name is
