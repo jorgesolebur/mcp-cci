@@ -256,7 +256,7 @@ async def retrieve_changes(org_name: str) -> str:
     return get_cci_command_instructions(command, purpose)
 
 @mcp.tool()
-async def deploy(org_name: str, path: str, check_only: str) -> str:
+async def deploy(org_name: str, path: str, check_only: bool) -> str:
     """Deploys local metadata in the specified org.
 
     This tool deploys local metadata in the specified org.
