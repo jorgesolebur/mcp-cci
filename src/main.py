@@ -199,11 +199,14 @@ async def list_orgs() -> str:
 
 @mcp.tool()
 async def run_tests(org_name: str = "dev") -> str:
-    """Run Apex tests in a CumulusCI org.
+    """Run ALL unit tests and static code scans in a CumulusCI org.
 
-    This tool runs the test suite in the specified org.
+    This tool runs all the test suite in the specified org.
     It runs PMD, ESLint, Flow Scanner as Static Code Scans
     It also runs Apex tests, Jest Tests and Flow tests as Unit Tests.
+    Use this tool when the user requests to run ALL tests in an org.
+    If the user requests to run a specific test, use the run_generic_cci_task tool
+    to look for the right task name and parameters.
 
     Args:
         org_name: Name of the org to run tests in (default: "dev")
@@ -263,7 +266,8 @@ async def deploy(org_name: str, path: str, check_only: str) -> str:
         not specified, use the tool list_orgs to get the list of orgs so 
         the user can choose one.
         path: Path to the local metadata to deploy. If not specified do not
-        add the --path argument the the command
+        add the --path argument the the command. Path cannot be a filename, it
+        must be a directory.
         check_only: This is a boolean, not a string - so the value needs to be 
         passed without quotes. Default it to false except if the user requests 
         that he wants only a simulation, validation or check of the deployment.
