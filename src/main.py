@@ -264,8 +264,9 @@ async def deploy(org_name: str, path: str, check_only: str) -> str:
         the user can choose one.
         path: Path to the local metadata to deploy. If not specified do not
         add the --path argument the the command
-        check_only: Default it to false except if the user requests that he wants
-        only a simulation, validation or check of the deployment.
+        check_only: This is a boolean, not a string. Default it to false 
+        except if the user requests that he wants only a simulation, validation 
+        or check of the deployment.
 
     
     Returns:
