@@ -101,7 +101,7 @@ async def create_dev_scratch_org(org_name: str = "dev") -> str:
         org_name: Name of the org to create (default: "dev")
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to create a development scratch org.
     """
     timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
     return f"""ACTION REQUIRED: Create scratch org '{org_name}':
@@ -133,7 +133,7 @@ async def create_feature_scratch_org(org_name: str = "feature") -> str:
         org_name: Name of the org to create (default: "feature")
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to create a feature scratch org.
     """
     timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
     return f"""ACTION REQUIRED: Create scratch org '{org_name}':
@@ -164,7 +164,7 @@ async def create_beta_scratch_org(org_name: str = "beta") -> str:
         org_name: Name of the org to create (default: "beta")
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to create a beta scratch org.
     """
     timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
     return f"""ACTION REQUIRED: Create scratch org '{org_name}':
@@ -191,7 +191,7 @@ async def list_orgs() -> str:
     This tool shows all orgs that are connected to CumulusCI.
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to list the available orgs.
     """
     command = "cci org list"
     purpose = "List all connected CumulusCI orgs"
@@ -212,7 +212,7 @@ async def run_tests(org_name: str = "dev") -> str:
         org_name: Name of the org to run tests in (default: "dev")
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to execute ALL tests in the specified org.
     """
     command = f"cci task run run_all_tests_locally --org {org_name}"
     purpose = f"Run Apex tests in org '{org_name}'"
@@ -230,7 +230,7 @@ async def open_org(org_name: str) -> str:
         the user can choose one.
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to open an org in the browser.
     """
     command = f"cci org browser --org {org_name}"
     purpose = f"Open org '{org_name}' in browser"
@@ -249,7 +249,7 @@ async def retrieve_changes(org_name: str) -> str:
         the user can choose one.
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to retrieve metadata from the specified org.
     """
     command = f"cci task run retrieve_changes --org {org_name}"
     purpose = f"Retrieves changes from org '{org_name}' locally"
@@ -274,7 +274,7 @@ async def deploy(org_name: str, path: str, check_only: bool) -> str:
 
     
     Returns:
-        Instructions for the LLM to execute the required commands
+        CLIs for the LLM to execute in order to deploy directly to the specified org.
     """
     command = f"cci task run deploy --org {org_name} --check_only {check_only} --path {path}"
     purpose = f"Deploy metadata to org '{org_name}'"
@@ -296,7 +296,7 @@ async def run_generic_cci_task(task_name: str, user_request: str) -> str:
         user_request: Description of what the user wants to accomplish
     
     Returns:
-        Instructions for the LLM to execute the 3-step process
+        Instructions for the LLM to execute the 3-step process to be executed to run the generic CCI task.
     """
     return f"""ACTION REQUIRED: Handle generic CCI task '{task_name}' for: {user_request}
 
