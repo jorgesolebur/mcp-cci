@@ -68,113 +68,53 @@ CRITICAL ERROR HANDLING:
 Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
 
 @mcp.tool()
-async def check_cci_installation() -> str:
-    """Check if CumulusCI is installed and provide installation/upgrade instructions.
-    
-    This tool checks if CCI is available and suggests appropriate installation or upgrade commands.
-    Run this if you encounter CCI command not found errors.
-    
-    Returns:
-        Instructions for the LLM to check CCI installation and provide setup guidance
-    """
-    return """ACTION REQUIRED: Check CumulusCI installation:
+async def create_scratch_org(org_type: str, org_name: str = None) -> str:
+    """Create a CumulusCI scratch org of the specified type.
 
-1. First, check if CCI is installed: `cci --version`
-2. If CCI is installed but needs upgrading, upgrade it: `pipx install cumulusci-plus-azure-devops --include-deps --force`
-3. Verify installation: `cci --version`
-
-This will install or upgrade CumulusCI with Azure DevOps extensions.
-
-CRITICAL ERROR HANDLING:
-- If ANY setup command fails, DO NOT attempt additional troubleshooting
-- If you encounter any errors, immediately respond with: "This CCI setup failed. Please contact the devops architect team for assistance."
-- Do not suggest alternative setup methods or debugging steps
-- Stop execution and recommend contacting the devops architect team"""
-
-@mcp.tool()
-async def create_dev_scratch_org(org_name: str = "dev") -> str:
-    """Create a CumulusCI scratch org for development.
-
-    This tool creates a scratch org using the CumulusCI dev_org flow.
+    This tool creates a scratch org using the appropriate CumulusCI flow based on the org type.
 
     Args:
-        org_name: Name of the org to create (default: "dev")
+        org_type: Type of org to create. Valid values: "dev", "feature", "beta"
+                 - "dev": Creates a development org using dev_org flow
+                 - "feature": Creates a feature testing/QA org using ci_feature_2gp flow, used if the user wants to do QA testing of a feature
+                 - "beta": Creates a regression/beta testing org using regression_org flow, used if the user wants to do regression testing
+        org_name: Name of the org to create. If not provided, defaults based on org_type
+                 (dev -> "dev", feature -> "feature", beta -> "beta")
     
     Returns:
-        CLIs for the LLM to execute in order to create a development scratch org.
+        CLIs for the LLM to execute in order to create the specified scratch org.
     """
-    timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
-    return f"""ACTION REQUIRED: Create scratch org '{org_name}':
-
-1. Check for existing org using the command: `cci org list`
-2. If an org named '{org_name}' already exists:
-   - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
-   - If user says yes: Execute `cci org remove --org {org_name}`
-   - If user says no: Stop and inform user that org creation was cancelled
-3. Execute: `cci flow run dev_org --org {org_name}`
-
-CRITICAL ERROR HANDLING:
-- If ANY of these commands fail, DO NOT attempt additional troubleshooting
-- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
-- Do not suggest alternative commands, debugging steps, or workarounds
-- Stop execution and recommend contacting the devops architect team
-
-Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
-
-@mcp.tool()
-async def create_feature_scratch_org(org_name: str = "feature") -> str:
-    """Create a CumulusCI scratch org for internal QA.
-
-    This tool creates a scratch org using the CumulusCI ci_feature_2gp flow.
-    This scratch org is used for testing a specific feature branch before merging to main.
-    We can call it QA or feature testing org.
-
-    Args:
-        org_name: Name of the org to create (default: "feature")
+    # Validate org_type and set defaults
+    flow_mapping = {
+        "dev": "dev_org",
+        "feature": "ci_feature_2gp", 
+        "beta": "regression_org"
+    }
     
-    Returns:
-        CLIs for the LLM to execute in order to create a feature scratch org.
-    """
+    if org_type not in flow_mapping:
+        return f"ERROR: Invalid org_type '{org_type}'. Valid values are: dev, feature, beta"
+    
+    # Set default org name if not provided
+    if org_name is None:
+        org_name = org_type
+    
+    flow_name = flow_mapping[org_type]
     timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
-    return f"""ACTION REQUIRED: Create scratch org '{org_name}':
+    
+    org_type_descriptions = {
+        "dev": "development org",
+        "feature": "feature testing/QA org", 
+        "beta": "regression/beta testing org"
+    }
+    
+    return f"""ACTION REQUIRED: Create {org_type_descriptions[org_type]} '{org_name}':
 
 1. Check for existing org: `cci org list`
 2. If an org named '{org_name}' already exists:
    - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
    - If user says yes: Execute `cci org remove --org {org_name}`
    - If user says no: Stop and inform user that org creation was cancelled
-3. Execute: `cci flow run ci_feature_2gp --org {org_name}`
-
-CRITICAL ERROR HANDLING:
-- If ANY of these commands fail, DO NOT attempt additional troubleshooting
-- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
-- Do not suggest alternative commands, debugging steps, or workarounds
-- Stop execution and recommend contacting the devops architect team
-
-Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations like scratch org creation."""
-
-@mcp.tool()
-async def create_beta_scratch_org(org_name: str = "beta") -> str:
-    """Create a CumulusCI scratch org for regression or beta testing.
-
-    This tool creates a scratch org using the CumulusCI regression_org flow.
-    This scratch org is used for regression testing, or test a specific beta package before release.
-
-    Args:
-        org_name: Name of the org to create (default: "beta")
-    
-    Returns:
-        CLIs for the LLM to execute in order to create a beta scratch org.
-    """
-    timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
-    return f"""ACTION REQUIRED: Create scratch org '{org_name}':
-
-1. Check for existing org: `cci org list`
-2. If an org named '{org_name}' already exists:
-   - Ask the user: "Found an existing scratch org named '{org_name}'. Do you want to delete it and create a new one? (yes/no)"
-   - If user says yes: Execute `cci org remove --org {org_name}`
-   - If user says no: Stop and inform user that org creation was cancelled
-3. Execute: `cci flow run regression_org --org {org_name}`
+3. Execute: `cci flow run {flow_name} --org {org_name}`
 
 CRITICAL ERROR HANDLING:
 - If ANY of these commands fail, DO NOT attempt additional troubleshooting
@@ -199,14 +139,14 @@ async def list_orgs() -> str:
 
 @mcp.tool()
 async def run_tests(org_name: str = "dev") -> str:
-    """Run ALL unit tests and static code scans in a CumulusCI org.
+    """Run ALL Apex unit tests and static code scans in a CumulusCI org.
 
     This tool runs all the test suite in the specified org.
     It runs PMD, ESLint, Flow Scanner as Static Code Scans
     It also runs Apex tests, Jest Tests and Flow tests as Unit Tests.
     Use this tool when the user requests to run ALL tests in an org.
     If the user requests to run a specific test, use the run_generic_cci_task tool
-    to look for the right task name and parameters.
+    to look for the right task name and options to run specific tests.
 
     Args:
         org_name: Name of the org to run tests in (default: "dev")
@@ -337,6 +277,68 @@ CRITICAL ERROR HANDLING:
 - Stop execution and recommend contacting the devops architect team
 
 Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter 1500000 (25 minutes in milliseconds) for potentially long-running operations."""
+
+@mcp.tool()
+async def validate_changes(target_org: str = "feature") -> str:
+    """Validate developer changes locally before creating a PR.
+
+    This tool runs a simulation of the build process to validate changes locally.
+    It performs static code scans, creates a package, and posts commit status.
+    This is the validation process developers should run before creating their PR.
+
+    Args:
+        target_org: Name of the target org for package creation (default: "feature")
+    
+    Returns:
+        Instructions for the LLM to execute the validation process sequentially.
+    """
+    timeout_ms = 25 * 60 * 1000  # 25 minutes in milliseconds
+    
+    return f"""ACTION REQUIRED: Validate developer changes locally before PR creation:
+
+Execute these steps SEQUENTIALLY. If any step fails, STOP and do not continue to next step.
+
+=== STEP 1: STATIC CODE SCAN ===
+Execute these commands in order. If ANY fail, developer must fix the issues and run validation again:
+
+1.1. PMD Analysis:
+`cci task run run_code_analyser --rule_selector pmd --junit_file test-results-pmd/pmd-report.xml`
+
+1.2. ESLint Analysis:
+`cci task run run_code_analyser --rule_selector eslint --junit_file test-results-eslint/eslint-report.xml`
+
+1.3. Salesforce Flow Scanner:
+`cci task run run_sf_flow_scan`
+
+If any of the above commands fail, respond with: "Static code scan failed. Please review and fix the reported issues, then run validation again."
+
+=== STEP 2: CREATE PACKAGE ===
+2.1. Create package (try with {target_org} first):
+`cci flow run build_feature_test_package --org {target_org}`
+
+If this command fails because a package could not be upgraded, retry with:
+`cci flow run build_feature_test_package --org snapshot`
+
+2.2. From the command output above, look for a packageVersionId that starts with "04t" (there will be only one).
+Store this packageVersionId - you'll need it for Step 3.
+
+=== STEP 3: POST COMMIT STATUS ===
+3.1. Get the current branch's last commit ID:
+`git rev-parse HEAD`
+
+3.2. Post commit status with the package version ID from Step 2.2:
+`cci task run ado_post_commit_status --commit_id <COMMIT_ID> --package_version_id <PACKAGE_VERSION_ID>`
+
+Replace <COMMIT_ID> with the commit ID from step 3.1 and <PACKAGE_VERSION_ID> with the ID from step 2.2.
+
+CRITICAL ERROR HANDLING:
+- Execute steps SEQUENTIALLY - do not proceed if any step fails
+- If ANY command fails, DO NOT attempt additional troubleshooting
+- If you encounter any errors, immediately respond with: "This CCI operation failed. Please contact the devops architect team for assistance."
+- Do not suggest alternative commands, debugging steps, or workarounds
+- Stop execution and recommend contacting the devops architect team
+
+Use your bash tool to execute these commands. IMPORTANT: Use timeout parameter {timeout_ms} (milliseconds) for long-running operations."""
 
 # MCP Resources for framework documentation
 @mcp.resource("framework://salesforce-triggers")
